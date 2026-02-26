@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix Charts Rain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; height: 100vh; }
+  canvas { display: block; position: fixed; top: 0; left: 0; }
+  .overlay-frame {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10; text-align: center;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    width: 620px; max-width: 90vw;
+    padding: 48px 52px;
+    background: rgba(8, 12, 20, 0.45);
+    backdrop-filter: blur(18px) saturate(1.3);
+    -webkit-backdrop-filter: blur(18px) saturate(1.3);
+    border: 1px solid rgba(39, 112, 239, 0.15);
+    border-radius: 16px;
+    box-shadow:
+      0 0 40px rgba(0, 0, 0, 0.5),
+      inset 0 0 60px rgba(39, 112, 239, 0.03),
+      0 0 1px rgba(255, 255, 255, 0.08);
+    transition: opacity 0.6s ease;
+  }
+  .overlay-frame h1 {
+    font-size: 1.65rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    line-height: 1.4;
+    margin-bottom: 14px;
+  }
+  .overlay-frame p {
+    color: #8a8a8a;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 6px;
+  }
+  .overlay-frame .btn-row {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .overlay-frame .btn {
+    display: inline-block;
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.25s, border-color 0.25s, color 0.25s;
+    border: 1px solid;
+  }
+  .overlay-frame .btn-primary {
+    background: #2770EF18;
+    border-color: #2770EF44;
+    color: #2770EF;
+  }
+  .overlay-frame .btn-primary:hover {
+    background: #2770EF30;
+    border-color: #2770EF88;
+  }
+  .overlay-frame .btn-secondary {
+    background: #2770EF18;
+    border-color: #2770EF44;
+    color: #2770EF;
+  }
+  .overlay-frame .btn-secondary:hover {
+    background: #2770EF30;
+    border-color: #2770EF88;
+  }
+
+  /* --- Captcha --- */
+  #captcha {
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(20, 20, 20, 0.7);
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+  }
+  #captcha-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+  #captcha-check {
+    position: relative;
+    width: 24px;
+    height: 24px;
+  }
+  #captcha-checkbox {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #555;
+    border-radius: 3px;
+    background: transparent;
+    transition: border-color 0.2s;
+  }
+  #captcha-box:hover #captcha-checkbox {
+    border-color: #2770EF66;
+  }
+  #captcha-spinner {
+    display: none;
+    position: absolute;
+    top: 0; left: 0;
+    width: 24px;
+    height: 24px;
+    border: 3px solid transparent;
+    border-top-color: #2770EF;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  #captcha-tick {
+    display: none;
+    position: absolute;
+    top: -1px; left: 2px;
+    font-size: 20px;
+    color: #2770EF;
+    line-height: 24px;
+  }
+  #captcha-label {
+    color: #aaa;
+    font-size: 0.85rem;
+    user-select: none;
+  }
+  #captcha-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    opacity: 0.5;
+  }
+  #captcha-brand-text {
+    font-size: 0.55rem;
+    color: #666;
+    line-height: 1.3;
+    text-align: center;
+  }
+  #captcha-brand-text span {
+    font-size: 0.48rem;
+    color: #555;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes dots {
+    0%  { content: '.'; }
+    33% { content: '..'; }
+    66% { content: '...'; }
+  }
+  #dots::after {
+    content: '.';
+    animation: dots 1.5s steps(1) infinite;
+  }
+  #color-toggle {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 20;
+    width: 48px;
+    height: 26px;
+    border-radius: 13px;
+    border: 1px solid #2770EF55;
+    background: #0a0a0a;
+    cursor: pointer;
+    padding: 0;
+    outline: none;
+    transition: border-color 0.3s, background 0.3s;
+  }
+  #color-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #2770EF;
+    box-shadow: 0 0 6px #2770EF;
+    transition: transform 0.3s, background 0.3s, box-shadow 0.3s;
+  }
+  body.rainbow #color-toggle {
+    border-color: #ff44aa55;
+    background: #110a0f;
+  }
+  body.rainbow #color-toggle::after {
+    transform: translateX(22px);
+    background: linear-gradient(135deg, #ff4444, #ffaa00, #44ff44, #4488ff, #cc44ff);
+    box-shadow: 0 0 8px #ff44aa88;
+  }
+  #color-label {
+    position: fixed;
+    bottom: 54px;
+    right: 18px;
+    z-index: 20;
+    font-family: 'Courier New', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: #2770EF88;
+    pointer-events: none;
+    transition: color 0.3s;
+  }
+  body.rainbow #color-label { color: #ff44aa88; }
+
+  /* --- Option 1: ThoughtSpot-style page --- */
+  #option1 {
+    position: fixed; inset: 0; z-index: 15;
+    background: #08062B;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% 50%, rgba(52,109,201,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 80% 60%, rgba(4,209,255,0.05) 0%, transparent 60%);
+    display: flex; align-items: center;
+    font-family: 'Geist Mono', 'Courier New', monospace;
+    padding: 0 8vw;
+    transition: opacity 0.5s ease;
+  }
+  #option1::before, #option1-screen2::before {
+    content: '';
+    position: absolute; inset: 0;
+    pointer-events: none;
+    opacity: 0.09;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' fill='none'%3E%3Cg stroke='%234A90D9' stroke-width='0.5'%3E%3Cline x1='0' y1='20' x2='45' y2='20'/%3E%3Cline x1='45' y1='20' x2='45' y2='55'/%3E%3Cline x1='45' y1='55' x2='90' y2='55'/%3E%3Cline x1='90' y1='55' x2='90' y2='20'/%3E%3Cline x1='90' y1='20' x2='145' y2='20'/%3E%3Cline x1='145' y1='20' x2='145' y2='60'/%3E%3Cline x1='145' y1='60' x2='200' y2='60'/%3E%3Cline x1='200' y1='60' x2='200' y2='20'/%3E%3Cline x1='200' y1='20' x2='260' y2='20'/%3E%3Cline x1='260' y1='20' x2='260' y2='50'/%3E%3Cline x1='260' y1='50' x2='310' y2='50'/%3E%3Cline x1='310' y1='50' x2='310' y2='20'/%3E%3Cline x1='310' y1='20' x2='365' y2='20'/%3E%3Cline x1='365' y1='20' x2='365' y2='55'/%3E%3Cline x1='365' y1='55' x2='400' y2='55'/%3E%3Cline x1='25' y1='0' x2='25' y2='20'/%3E%3Cline x1='70' y1='0' x2='70' y2='30'/%3E%3Cline x1='70' y1='30' x2='90' y2='30'/%3E%3Cline x1='120' y1='0' x2='120' y2='20'/%3E%3Cline x1='170' y1='0' x2='170' y2='35'/%3E%3Cline x1='170' y1='35' x2='200' y2='35'/%3E%3Cline x1='230' y1='0' x2='230' y2='20'/%3E%3Cline x1='290' y1='0' x2='290' y2='20'/%3E%3Cline x1='340' y1='0' x2='340' y2='20'/%3E%3Cline x1='390' y1='0' x2='390' y2='30'/%3E%3Cline x1='390' y1='30' x2='400' y2='30'/%3E%3Cline x1='0' y1='80' x2='35' y2='80'/%3E%3Cline x1='35' y1='80' x2='35' y2='120'/%3E%3Cline x1='35' y1='120' x2='80' y2='120'/%3E%3Cline x1='80' y1='120' x2='80' y2='80'/%3E%3Cline x1='80' y1='80' x2='130' y2='80'/%3E%3Cline x1='130' y1='80' x2='130' y2='115'/%3E%3Cline x1='130' y1='115' x2='185' y2='115'/%3E%3Cline x1='185' y1='115' x2='185' y2='80'/%3E%3Cline x1='185' y1='80' x2='240' y2='80'/%3E%3Cline x1='240' y1='80' x2='240' y2='125'/%3E%3Cline x1='240' y1='125' x2='295' y2='125'/%3E%3Cline x1='295' y1='125' x2='295' y2='80'/%3E%3Cline x1='295' y1='80' x2='355' y2='80'/%3E%3Cline x1='355' y1='80' x2='355' y2='120'/%3E%3Cline x1='355' y1='120' x2='400' y2='120'/%3E%3Cline x1='60' y1='55' x2='60' y2='80'/%3E%3Cline x1='110' y1='60' x2='110' y2='80'/%3E%3Cline x1='160' y1='60' x2='160' y2='80'/%3E%3Cline x1='215' y1='60' x2='215' y2='80'/%3E%3Cline x1='275' y1='50' x2='275' y2='80'/%3E%3Cline x1='330' y1='50' x2='330' y2='80'/%3E%3Cline x1='380' y1='55' x2='380' y2='80'/%3E%3Cline x1='0' y1='150' x2='50' y2='150'/%3E%3Cline x1='50' y1='150' x2='50' y2='190'/%3E%3Cline x1='50' y1='190' x2='100' y2='190'/%3E%3Cline x1='100' y1='190' x2='100' y2='150'/%3E%3Cline x1='100' y1='150' x2='155' y2='150'/%3E%3Cline x1='155' y1='150' x2='155' y2='185'/%3E%3Cline x1='155' y1='185' x2='210' y2='185'/%3E%3Cline x1='210' y1='185' x2='210' y2='150'/%3E%3Cline x1='210' y1='150' x2='270' y2='150'/%3E%3Cline x1='270' y1='150' x2='270' y2='195'/%3E%3Cline x1='270' y1='195' x2='325' y2='195'/%3E%3Cline x1='325' y1='195' x2='325' y2='150'/%3E%3Cline x1='325' y1='150' x2='375' y2='150'/%3E%3Cline x1='375' y1='150' x2='375' y2='190'/%3E%3Cline x1='375' y1='190' x2='400' y2='190'/%3E%3Cline x1='20' y1='120' x2='20' y2='150'/%3E%3Cline x1='75' y1='120' x2='75' y2='150'/%3E%3Cline x1='130' y1='115' x2='130' y2='150'/%3E%3Cline x1='185' y1='115' x2='185' y2='150'/%3E%3Cline x1='250' y1='125' x2='250' y2='150'/%3E%3Cline x1='295' y1='125' x2='295' y2='150'/%3E%3Cline x1='345' y1='120' x2='345' y2='150'/%3E%3Cline x1='0' y1='220' x2='40' y2='220'/%3E%3Cline x1='40' y1='220' x2='40' y2='260'/%3E%3Cline x1='40' y1='260' x2='95' y2='260'/%3E%3Cline x1='95' y1='260' x2='95' y2='220'/%3E%3Cline x1='95' y1='220' x2='150' y2='220'/%3E%3Cline x1='150' y1='220' x2='150' y2='255'/%3E%3Cline x1='150' y1='255' x2='205' y2='255'/%3E%3Cline x1='205' y1='255' x2='205' y2='220'/%3E%3Cline x1='205' y1='220' x2='265' y2='220'/%3E%3Cline x1='265' y1='220' x2='265' y2='260'/%3E%3Cline x1='265' y1='260' x2='320' y2='260'/%3E%3Cline x1='320' y1='260' x2='320' y2='220'/%3E%3Cline x1='320' y1='220' x2='380' y2='220'/%3E%3Cline x1='380' y1='220' x2='380' y2='255'/%3E%3Cline x1='380' y1='255' x2='400' y2='255'/%3E%3Cline x1='25' y1='190' x2='25' y2='220'/%3E%3Cline x1='70' y1='190' x2='70' y2='220'/%3E%3Cline x1='125' y1='185' x2='125' y2='220'/%3E%3Cline x1='180' y1='185' x2='180' y2='220'/%3E%3Cline x1='235' y1='195' x2='235' y2='220'/%3E%3Cline x1='300' y1='195' x2='300' y2='220'/%3E%3Cline x1='350' y1='190' x2='350' y2='220'/%3E%3Cline x1='395' y1='190' x2='395' y2='220'/%3E%3Cline x1='0' y1='290' x2='55' y2='290'/%3E%3Cline x1='55' y1='290' x2='55' y2='330'/%3E%3Cline x1='55' y1='330' x2='110' y2='330'/%3E%3Cline x1='110' y1='330' x2='110' y2='290'/%3E%3Cline x1='110' y1='290' x2='165' y2='290'/%3E%3Cline x1='165' y1='290' x2='165' y2='325'/%3E%3Cline x1='165' y1='325' x2='220' y2='325'/%3E%3Cline x1='220' y1='325' x2='220' y2='290'/%3E%3Cline x1='220' y1='290' x2='280' y2='290'/%3E%3Cline x1='280' y1='290' x2='280' y2='330'/%3E%3Cline x1='280' y1='330' x2='340' y2='330'/%3E%3Cline x1='340' y1='330' x2='340' y2='290'/%3E%3Cline x1='340' y1='290' x2='400' y2='290'/%3E%3Cline x1='15' y1='260' x2='15' y2='290'/%3E%3Cline x1='65' y1='260' x2='65' y2='290'/%3E%3Cline x1='120' y1='255' x2='120' y2='290'/%3E%3Cline x1='175' y1='255' x2='175' y2='290'/%3E%3Cline x1='245' y1='260' x2='245' y2='290'/%3E%3Cline x1='305' y1='260' x2='305' y2='290'/%3E%3Cline x1='360' y1='255' x2='360' y2='290'/%3E%3Cline x1='0' y1='360' x2='45' y2='360'/%3E%3Cline x1='45' y1='360' x2='45' y2='400'/%3E%3Cline x1='85' y1='330' x2='85' y2='360'/%3E%3Cline x1='85' y1='360' x2='140' y2='360'/%3E%3Cline x1='140' y1='360' x2='140' y2='400'/%3E%3Cline x1='195' y1='325' x2='195' y2='360'/%3E%3Cline x1='195' y1='360' x2='250' y2='360'/%3E%3Cline x1='250' y1='360' x2='250' y2='400'/%3E%3Cline x1='310' y1='330' x2='310' y2='360'/%3E%3Cline x1='310' y1='360' x2='370' y2='360'/%3E%3Cline x1='370' y1='360' x2='370' y2='400'/%3E%3Cline x1='390' y1='290' x2='390' y2='360'/%3E%3Cline x1='390' y1='360' x2='400' y2='360'/%3E%3Cline x1='90' y1='360' x2='90' y2='400'/%3E%3Cline x1='200' y1='360' x2='200' y2='400'/%3E%3Cline x1='300' y1='360' x2='300' y2='400'/%3E%3Cline x1='340' y1='360' x2='340' y2='400'/%3E%3C/g%3E%3Cg fill='%234A90D9'%3E%3Ccircle cx='45' cy='20' r='1.5'/%3E%3Ccircle cx='45' cy='55' r='1.5'/%3E%3Ccircle cx='90' cy='55' r='1.5'/%3E%3Ccircle cx='90' cy='20' r='1.5'/%3E%3Ccircle cx='145' cy='20' r='1.5'/%3E%3Ccircle cx='145' cy='60' r='1.5'/%3E%3Ccircle cx='200' cy='60' r='1.5'/%3E%3Ccircle cx='200' cy='20' r='1.5'/%3E%3Ccircle cx='260' cy='20' r='1.5'/%3E%3Ccircle cx='260' cy='50' r='1.5'/%3E%3Ccircle cx='310' cy='50' r='1.5'/%3E%3Ccircle cx='310' cy='20' r='1.5'/%3E%3Ccircle cx='365' cy='20' r='1.5'/%3E%3Ccircle cx='365' cy='55' r='1.5'/%3E%3Ccircle cx='35' cy='80' r='1.5'/%3E%3Ccircle cx='35' cy='120' r='1.5'/%3E%3Ccircle cx='80' cy='120' r='1.5'/%3E%3Ccircle cx='80' cy='80' r='1.5'/%3E%3Ccircle cx='130' cy='80' r='1.5'/%3E%3Ccircle cx='130' cy='115' r='1.5'/%3E%3Ccircle cx='185' cy='115' r='1.5'/%3E%3Ccircle cx='185' cy='80' r='1.5'/%3E%3Ccircle cx='240' cy='80' r='1.5'/%3E%3Ccircle cx='240' cy='125' r='1.5'/%3E%3Ccircle cx='295' cy='125' r='1.5'/%3E%3Ccircle cx='295' cy='80' r='1.5'/%3E%3Ccircle cx='355' cy='80' r='1.5'/%3E%3Ccircle cx='355' cy='120' r='1.5'/%3E%3Ccircle cx='50' cy='150' r='1.5'/%3E%3Ccircle cx='50' cy='190' r='1.5'/%3E%3Ccircle cx='100' cy='190' r='1.5'/%3E%3Ccircle cx='100' cy='150' r='1.5'/%3E%3Ccircle cx='155' cy='150' r='1.5'/%3E%3Ccircle cx='155' cy='185' r='1.5'/%3E%3Ccircle cx='210' cy='185' r='1.5'/%3E%3Ccircle cx='210' cy='150' r='1.5'/%3E%3Ccircle cx='270' cy='150' r='1.5'/%3E%3Ccircle cx='270' cy='195' r='1.5'/%3E%3Ccircle cx='325' cy='195' r='1.5'/%3E%3Ccircle cx='325' cy='150' r='1.5'/%3E%3Ccircle cx='375' cy='150' r='1.5'/%3E%3Ccircle cx='375' cy='190' r='1.5'/%3E%3Ccircle cx='40' cy='220' r='1.5'/%3E%3Ccircle cx='40' cy='260' r='1.5'/%3E%3Ccircle cx='95' cy='260' r='1.5'/%3E%3Ccircle cx='95' cy='220' r='1.5'/%3E%3Ccircle cx='150' cy='220' r='1.5'/%3E%3Ccircle cx='150' cy='255' r='1.5'/%3E%3Ccircle cx='205' cy='255' r='1.5'/%3E%3Ccircle cx='205' cy='220' r='1.5'/%3E%3Ccircle cx='265' cy='220' r='1.5'/%3E%3Ccircle cx='265' cy='260' r='1.5'/%3E%3Ccircle cx='320' cy='260' r='1.5'/%3E%3Ccircle cx='320' cy='220' r='1.5'/%3E%3Ccircle cx='380' cy='220' r='1.5'/%3E%3Ccircle cx='380' cy='255' r='1.5'/%3E%3Ccircle cx='55' cy='290' r='1.5'/%3E%3Ccircle cx='55' cy='330' r='1.5'/%3E%3Ccircle cx='110' cy='330' r='1.5'/%3E%3Ccircle cx='110' cy='290' r='1.5'/%3E%3Ccircle cx='165' cy='290' r='1.5'/%3E%3Ccircle cx='165' cy='325' r='1.5'/%3E%3Ccircle cx='220' cy='325' r='1.5'/%3E%3Ccircle cx='220' cy='290' r='1.5'/%3E%3Ccircle cx='280' cy='290' r='1.5'/%3E%3Ccircle cx='280' cy='330' r='1.5'/%3E%3Ccircle cx='340' cy='330' r='1.5'/%3E%3Ccircle cx='340' cy='290' r='1.5'/%3E%3Ccircle cx='45' cy='360' r='1.5'/%3E%3Ccircle cx='85' cy='360' r='1.5'/%3E%3Ccircle cx='140' cy='360' r='1.5'/%3E%3Ccircle cx='195' cy='360' r='1.5'/%3E%3Ccircle cx='250' cy='360' r='1.5'/%3E%3Ccircle cx='310' cy='360' r='1.5'/%3E%3Ccircle cx='370' cy='360' r='1.5'/%3E%3Ccircle cx='390' cy='290' r='1.5'/%3E%3Ccircle cx='390' cy='360' r='1.5'/%3E%3Ccircle cx='70' cy='30' r='1.5'/%3E%3Ccircle cx='170' cy='35' r='1.5'/%3E%3Ccircle cx='60' cy='55' r='1.5'/%3E%3Ccircle cx='110' cy='60' r='1.5'/%3E%3Ccircle cx='160' cy='60' r='1.5'/%3E%3Ccircle cx='215' cy='60' r='1.5'/%3E%3Ccircle cx='275' cy='50' r='1.5'/%3E%3Ccircle cx='330' cy='50' r='1.5'/%3E%3Ccircle cx='380' cy='55' r='1.5'/%3E%3Ccircle cx='20' cy='120' r='1.5'/%3E%3Ccircle cx='75' cy='120' r='1.5'/%3E%3Ccircle cx='250' cy='125' r='1.5'/%3E%3Ccircle cx='345' cy='120' r='1.5'/%3E%3Ccircle cx='25' cy='190' r='1.5'/%3E%3Ccircle cx='70' cy='190' r='1.5'/%3E%3Ccircle cx='125' cy='185' r='1.5'/%3E%3Ccircle cx='180' cy='185' r='1.5'/%3E%3Ccircle cx='235' cy='195' r='1.5'/%3E%3Ccircle cx='300' cy='195' r='1.5'/%3E%3Ccircle cx='350' cy='190' r='1.5'/%3E%3Ccircle cx='395' cy='190' r='1.5'/%3E%3Ccircle cx='15' cy='260' r='1.5'/%3E%3Ccircle cx='65' cy='260' r='1.5'/%3E%3Ccircle cx='120' cy='255' r='1.5'/%3E%3Ccircle cx='175' cy='255' r='1.5'/%3E%3Ccircle cx='245' cy='260' r='1.5'/%3E%3Ccircle cx='305' cy='260' r='1.5'/%3E%3Ccircle cx='360' cy='255' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 400px 400px;
+    background-repeat: repeat;
+    z-index: 0;
+  }
+  #option1::before { opacity: 0.16; }
+  #option1 > *, #option1-screen2 > * { position: relative; z-index: 1; }
+
+  /* Flowing current effect — Screen 2 only */
+  #option1-screen2::after {
+    content: '';
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' fill='none'%3E%3Cg stroke='%2304D1FF' stroke-width='0.8'%3E%3Cline x1='0' y1='20' x2='45' y2='20'/%3E%3Cline x1='45' y1='20' x2='45' y2='55'/%3E%3Cline x1='45' y1='55' x2='90' y2='55'/%3E%3Cline x1='90' y1='55' x2='90' y2='20'/%3E%3Cline x1='90' y1='20' x2='145' y2='20'/%3E%3Cline x1='145' y1='20' x2='145' y2='60'/%3E%3Cline x1='145' y1='60' x2='200' y2='60'/%3E%3Cline x1='200' y1='60' x2='200' y2='20'/%3E%3Cline x1='200' y1='20' x2='260' y2='20'/%3E%3Cline x1='260' y1='20' x2='260' y2='50'/%3E%3Cline x1='260' y1='50' x2='310' y2='50'/%3E%3Cline x1='310' y1='50' x2='310' y2='20'/%3E%3Cline x1='310' y1='20' x2='365' y2='20'/%3E%3Cline x1='365' y1='20' x2='365' y2='55'/%3E%3Cline x1='365' y1='55' x2='400' y2='55'/%3E%3Cline x1='25' y1='0' x2='25' y2='20'/%3E%3Cline x1='70' y1='0' x2='70' y2='30'/%3E%3Cline x1='70' y1='30' x2='90' y2='30'/%3E%3Cline x1='120' y1='0' x2='120' y2='20'/%3E%3Cline x1='170' y1='0' x2='170' y2='35'/%3E%3Cline x1='170' y1='35' x2='200' y2='35'/%3E%3Cline x1='230' y1='0' x2='230' y2='20'/%3E%3Cline x1='290' y1='0' x2='290' y2='20'/%3E%3Cline x1='340' y1='0' x2='340' y2='20'/%3E%3Cline x1='390' y1='0' x2='390' y2='30'/%3E%3Cline x1='390' y1='30' x2='400' y2='30'/%3E%3Cline x1='0' y1='80' x2='35' y2='80'/%3E%3Cline x1='35' y1='80' x2='35' y2='120'/%3E%3Cline x1='35' y1='120' x2='80' y2='120'/%3E%3Cline x1='80' y1='120' x2='80' y2='80'/%3E%3Cline x1='80' y1='80' x2='130' y2='80'/%3E%3Cline x1='130' y1='80' x2='130' y2='115'/%3E%3Cline x1='130' y1='115' x2='185' y2='115'/%3E%3Cline x1='185' y1='115' x2='185' y2='80'/%3E%3Cline x1='185' y1='80' x2='240' y2='80'/%3E%3Cline x1='240' y1='80' x2='240' y2='125'/%3E%3Cline x1='240' y1='125' x2='295' y2='125'/%3E%3Cline x1='295' y1='125' x2='295' y2='80'/%3E%3Cline x1='295' y1='80' x2='355' y2='80'/%3E%3Cline x1='355' y1='80' x2='355' y2='120'/%3E%3Cline x1='355' y1='120' x2='400' y2='120'/%3E%3Cline x1='60' y1='55' x2='60' y2='80'/%3E%3Cline x1='110' y1='60' x2='110' y2='80'/%3E%3Cline x1='160' y1='60' x2='160' y2='80'/%3E%3Cline x1='215' y1='60' x2='215' y2='80'/%3E%3Cline x1='275' y1='50' x2='275' y2='80'/%3E%3Cline x1='330' y1='50' x2='330' y2='80'/%3E%3Cline x1='380' y1='55' x2='380' y2='80'/%3E%3Cline x1='0' y1='150' x2='50' y2='150'/%3E%3Cline x1='50' y1='150' x2='50' y2='190'/%3E%3Cline x1='50' y1='190' x2='100' y2='190'/%3E%3Cline x1='100' y1='190' x2='100' y2='150'/%3E%3Cline x1='100' y1='150' x2='155' y2='150'/%3E%3Cline x1='155' y1='150' x2='155' y2='185'/%3E%3Cline x1='155' y1='185' x2='210' y2='185'/%3E%3Cline x1='210' y1='185' x2='210' y2='150'/%3E%3Cline x1='210' y1='150' x2='270' y2='150'/%3E%3Cline x1='270' y1='150' x2='270' y2='195'/%3E%3Cline x1='270' y1='195' x2='325' y2='195'/%3E%3Cline x1='325' y1='195' x2='325' y2='150'/%3E%3Cline x1='325' y1='150' x2='375' y2='150'/%3E%3Cline x1='375' y1='150' x2='375' y2='190'/%3E%3Cline x1='375' y1='190' x2='400' y2='190'/%3E%3Cline x1='20' y1='120' x2='20' y2='150'/%3E%3Cline x1='75' y1='120' x2='75' y2='150'/%3E%3Cline x1='130' y1='115' x2='130' y2='150'/%3E%3Cline x1='185' y1='115' x2='185' y2='150'/%3E%3Cline x1='250' y1='125' x2='250' y2='150'/%3E%3Cline x1='295' y1='125' x2='295' y2='150'/%3E%3Cline x1='345' y1='120' x2='345' y2='150'/%3E%3Cline x1='0' y1='220' x2='40' y2='220'/%3E%3Cline x1='40' y1='220' x2='40' y2='260'/%3E%3Cline x1='40' y1='260' x2='95' y2='260'/%3E%3Cline x1='95' y1='260' x2='95' y2='220'/%3E%3Cline x1='95' y1='220' x2='150' y2='220'/%3E%3Cline x1='150' y1='220' x2='150' y2='255'/%3E%3Cline x1='150' y1='255' x2='205' y2='255'/%3E%3Cline x1='205' y1='255' x2='205' y2='220'/%3E%3Cline x1='205' y1='220' x2='265' y2='220'/%3E%3Cline x1='265' y1='220' x2='265' y2='260'/%3E%3Cline x1='265' y1='260' x2='320' y2='260'/%3E%3Cline x1='320' y1='260' x2='320' y2='220'/%3E%3Cline x1='320' y1='220' x2='380' y2='220'/%3E%3Cline x1='380' y1='220' x2='380' y2='255'/%3E%3Cline x1='380' y1='255' x2='400' y2='255'/%3E%3Cline x1='25' y1='190' x2='25' y2='220'/%3E%3Cline x1='70' y1='190' x2='70' y2='220'/%3E%3Cline x1='125' y1='185' x2='125' y2='220'/%3E%3Cline x1='180' y1='185' x2='180' y2='220'/%3E%3Cline x1='235' y1='195' x2='235' y2='220'/%3E%3Cline x1='300' y1='195' x2='300' y2='220'/%3E%3Cline x1='350' y1='190' x2='350' y2='220'/%3E%3Cline x1='395' y1='190' x2='395' y2='220'/%3E%3Cline x1='0' y1='290' x2='55' y2='290'/%3E%3Cline x1='55' y1='290' x2='55' y2='330'/%3E%3Cline x1='55' y1='330' x2='110' y2='330'/%3E%3Cline x1='110' y1='330' x2='110' y2='290'/%3E%3Cline x1='110' y1='290' x2='165' y2='290'/%3E%3Cline x1='165' y1='290' x2='165' y2='325'/%3E%3Cline x1='165' y1='325' x2='220' y2='325'/%3E%3Cline x1='220' y1='325' x2='220' y2='290'/%3E%3Cline x1='220' y1='290' x2='280' y2='290'/%3E%3Cline x1='280' y1='290' x2='280' y2='330'/%3E%3Cline x1='280' y1='330' x2='340' y2='330'/%3E%3Cline x1='340' y1='330' x2='340' y2='290'/%3E%3Cline x1='340' y1='290' x2='400' y2='290'/%3E%3Cline x1='15' y1='260' x2='15' y2='290'/%3E%3Cline x1='65' y1='260' x2='65' y2='290'/%3E%3Cline x1='120' y1='255' x2='120' y2='290'/%3E%3Cline x1='175' y1='255' x2='175' y2='290'/%3E%3Cline x1='245' y1='260' x2='245' y2='290'/%3E%3Cline x1='305' y1='260' x2='305' y2='290'/%3E%3Cline x1='360' y1='255' x2='360' y2='290'/%3E%3Cline x1='0' y1='360' x2='45' y2='360'/%3E%3Cline x1='45' y1='360' x2='45' y2='400'/%3E%3Cline x1='85' y1='330' x2='85' y2='360'/%3E%3Cline x1='85' y1='360' x2='140' y2='360'/%3E%3Cline x1='140' y1='360' x2='140' y2='400'/%3E%3Cline x1='195' y1='325' x2='195' y2='360'/%3E%3Cline x1='195' y1='360' x2='250' y2='360'/%3E%3Cline x1='250' y1='360' x2='250' y2='400'/%3E%3Cline x1='310' y1='330' x2='310' y2='360'/%3E%3Cline x1='310' y1='360' x2='370' y2='360'/%3E%3Cline x1='370' y1='360' x2='370' y2='400'/%3E%3Cline x1='390' y1='290' x2='390' y2='360'/%3E%3Cline x1='390' y1='360' x2='400' y2='360'/%3E%3Cline x1='90' y1='360' x2='90' y2='400'/%3E%3Cline x1='200' y1='360' x2='200' y2='400'/%3E%3Cline x1='300' y1='360' x2='300' y2='400'/%3E%3Cline x1='340' y1='360' x2='340' y2='400'/%3E%3C/g%3E%3Cg fill='%2304D1FF'%3E%3Ccircle cx='45' cy='20' r='2'/%3E%3Ccircle cx='45' cy='55' r='2'/%3E%3Ccircle cx='90' cy='55' r='2'/%3E%3Ccircle cx='90' cy='20' r='2'/%3E%3Ccircle cx='145' cy='20' r='2'/%3E%3Ccircle cx='145' cy='60' r='2'/%3E%3Ccircle cx='200' cy='60' r='2'/%3E%3Ccircle cx='200' cy='20' r='2'/%3E%3Ccircle cx='260' cy='20' r='2'/%3E%3Ccircle cx='260' cy='50' r='2'/%3E%3Ccircle cx='310' cy='50' r='2'/%3E%3Ccircle cx='310' cy='20' r='2'/%3E%3Ccircle cx='365' cy='20' r='2'/%3E%3Ccircle cx='365' cy='55' r='2'/%3E%3Ccircle cx='35' cy='80' r='2'/%3E%3Ccircle cx='35' cy='120' r='2'/%3E%3Ccircle cx='80' cy='120' r='2'/%3E%3Ccircle cx='80' cy='80' r='2'/%3E%3Ccircle cx='130' cy='80' r='2'/%3E%3Ccircle cx='130' cy='115' r='2'/%3E%3Ccircle cx='185' cy='115' r='2'/%3E%3Ccircle cx='185' cy='80' r='2'/%3E%3Ccircle cx='240' cy='80' r='2'/%3E%3Ccircle cx='240' cy='125' r='2'/%3E%3Ccircle cx='295' cy='125' r='2'/%3E%3Ccircle cx='295' cy='80' r='2'/%3E%3Ccircle cx='355' cy='80' r='2'/%3E%3Ccircle cx='355' cy='120' r='2'/%3E%3Ccircle cx='50' cy='150' r='2'/%3E%3Ccircle cx='50' cy='190' r='2'/%3E%3Ccircle cx='100' cy='190' r='2'/%3E%3Ccircle cx='100' cy='150' r='2'/%3E%3Ccircle cx='155' cy='150' r='2'/%3E%3Ccircle cx='155' cy='185' r='2'/%3E%3Ccircle cx='210' cy='185' r='2'/%3E%3Ccircle cx='210' cy='150' r='2'/%3E%3Ccircle cx='270' cy='150' r='2'/%3E%3Ccircle cx='270' cy='195' r='2'/%3E%3Ccircle cx='325' cy='195' r='2'/%3E%3Ccircle cx='325' cy='150' r='2'/%3E%3Ccircle cx='375' cy='150' r='2'/%3E%3Ccircle cx='375' cy='190' r='2'/%3E%3Ccircle cx='40' cy='220' r='2'/%3E%3Ccircle cx='40' cy='260' r='2'/%3E%3Ccircle cx='95' cy='260' r='2'/%3E%3Ccircle cx='95' cy='220' r='2'/%3E%3Ccircle cx='150' cy='220' r='2'/%3E%3Ccircle cx='150' cy='255' r='2'/%3E%3Ccircle cx='205' cy='255' r='2'/%3E%3Ccircle cx='205' cy='220' r='2'/%3E%3Ccircle cx='265' cy='220' r='2'/%3E%3Ccircle cx='265' cy='260' r='2'/%3E%3Ccircle cx='320' cy='260' r='2'/%3E%3Ccircle cx='320' cy='220' r='2'/%3E%3Ccircle cx='380' cy='220' r='2'/%3E%3Ccircle cx='380' cy='255' r='2'/%3E%3Ccircle cx='55' cy='290' r='2'/%3E%3Ccircle cx='55' cy='330' r='2'/%3E%3Ccircle cx='110' cy='330' r='2'/%3E%3Ccircle cx='110' cy='290' r='2'/%3E%3Ccircle cx='165' cy='290' r='2'/%3E%3Ccircle cx='165' cy='325' r='2'/%3E%3Ccircle cx='220' cy='325' r='2'/%3E%3Ccircle cx='220' cy='290' r='2'/%3E%3Ccircle cx='280' cy='290' r='2'/%3E%3Ccircle cx='280' cy='330' r='2'/%3E%3Ccircle cx='340' cy='330' r='2'/%3E%3Ccircle cx='340' cy='290' r='2'/%3E%3Ccircle cx='45' cy='360' r='2'/%3E%3Ccircle cx='85' cy='360' r='2'/%3E%3Ccircle cx='140' cy='360' r='2'/%3E%3Ccircle cx='195' cy='360' r='2'/%3E%3Ccircle cx='250' cy='360' r='2'/%3E%3Ccircle cx='310' cy='360' r='2'/%3E%3Ccircle cx='370' cy='360' r='2'/%3E%3Ccircle cx='390' cy='290' r='2'/%3E%3Ccircle cx='390' cy='360' r='2'/%3E%3Ccircle cx='60' cy='55' r='2'/%3E%3Ccircle cx='110' cy='60' r='2'/%3E%3Ccircle cx='160' cy='60' r='2'/%3E%3Ccircle cx='215' cy='60' r='2'/%3E%3Ccircle cx='275' cy='50' r='2'/%3E%3Ccircle cx='330' cy='50' r='2'/%3E%3Ccircle cx='380' cy='55' r='2'/%3E%3Ccircle cx='20' cy='120' r='2'/%3E%3Ccircle cx='75' cy='120' r='2'/%3E%3Ccircle cx='250' cy='125' r='2'/%3E%3Ccircle cx='345' cy='120' r='2'/%3E%3Ccircle cx='25' cy='190' r='2'/%3E%3Ccircle cx='70' cy='190' r='2'/%3E%3Ccircle cx='125' cy='185' r='2'/%3E%3Ccircle cx='180' cy='185' r='2'/%3E%3Ccircle cx='235' cy='195' r='2'/%3E%3Ccircle cx='300' cy='195' r='2'/%3E%3Ccircle cx='350' cy='190' r='2'/%3E%3Ccircle cx='395' cy='190' r='2'/%3E%3Ccircle cx='15' cy='260' r='2'/%3E%3Ccircle cx='65' cy='260' r='2'/%3E%3Ccircle cx='120' cy='255' r='2'/%3E%3Ccircle cx='175' cy='255' r='2'/%3E%3Ccircle cx='245' cy='260' r='2'/%3E%3Ccircle cx='305' cy='260' r='2'/%3E%3Ccircle cx='360' cy='255' r='2'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 400px 400px;
+    background-repeat: repeat;
+    z-index: 0;
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 8%, transparent 16%, transparent 100%);
+    mask-image: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 8%, transparent 16%, transparent 100%);
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    animation: circuitPulse 4s ease-out infinite;
+  }
+
+  @keyframes circuitPulse {
+    0%   {
+      -webkit-mask-size: 0% 0%;
+      mask-size: 0% 0%;
+      opacity: 0.9;
+    }
+    70%  {
+      -webkit-mask-size: 350% 350%;
+      mask-size: 350% 350%;
+      opacity: 0.4;
+    }
+    100% {
+      -webkit-mask-size: 500% 500%;
+      mask-size: 500% 500%;
+      opacity: 0;
+    }
+  }
+  #option1 .o1-left {
+    flex: 0 0 50%; max-width: 560px;
+    display: flex; flex-direction: column;
+    gap: 0;
+  }
+  #option1 .o1-right {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding-left: 4vw;
+  }
+  #option1 .o1-left h1 {
+    font-family: 'Geist Mono', 'Courier New', monospace;
+    font-size: 1.75rem; font-weight: 600;
+    color: #eef0f4; line-height: 1.45;
+    margin-bottom: 18px; letter-spacing: -0.01em;
+  }
+  #option1 .o1-left p {
+    font-family: 'Geist Mono', 'Courier New', monospace;
+    color: #6b7a99; font-size: 0.88rem;
+    line-height: 1.6; margin-bottom: 36px;
+  }
+  #option1 .o1-captcha {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: rgba(18, 34, 70, 0.5);
+    border: 1px solid rgba(52,109,201,0.2);
+    border-radius: 4px; padding: 10px 14px;
+    margin-bottom: 24px;
+  }
+  #option1 .o1-captcha-box {
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+  }
+  #option1 .o1-captcha-check {
+    position: relative; width: 24px; height: 24px;
+  }
+  #option1 .o1-captcha-checkbox {
+    width: 24px; height: 24px;
+    border: 2px solid #3a5080; border-radius: 3px;
+    background: transparent; transition: border-color 0.2s;
+  }
+  #option1 .o1-captcha-box:hover .o1-captcha-checkbox {
+    border-color: #04D1FF88;
+  }
+  #option1 .o1-captcha-spinner {
+    display: none; position: absolute; top: 0; left: 0;
+    width: 24px; height: 24px;
+    border: 3px solid transparent; border-top-color: #04D1FF;
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  #option1 .o1-captcha-tick {
+    display: none; position: absolute; top: -1px; left: 2px;
+    font-size: 20px; color: #04D1FF; line-height: 24px;
+  }
+  #option1 .o1-captcha-label {
+    color: #8a9bbb; font-size: 0.85rem; user-select: none;
+  }
+  #option1 .o1-captcha-brand {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 2px; opacity: 0.4;
+  }
+  #option1 .o1-captcha-brand-text {
+    font-size: 0.55rem; color: #4a5a7a; line-height: 1.3; text-align: center;
+  }
+  #option1 .o1-captcha-brand-text span {
+    font-size: 0.48rem; color: #3a4a6a;
+  }
+
+  /* --- Option switcher button --- */
+  #option-switcher {
+    position: fixed; bottom: 70px; right: 24px; z-index: 25;
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid rgba(52,109,201,0.3);
+    background: rgba(8, 6, 43, 0.85);
+    cursor: pointer; padding: 0; outline: none;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.3s, background 0.3s, transform 0.2s;
+    backdrop-filter: blur(8px);
+  }
+  #option-switcher:hover {
+    border-color: #04D1FF88; background: rgba(18, 34, 70, 0.9);
+    transform: scale(1.08);
+  }
+  #option-switcher svg {
+    width: 18px; height: 18px; fill: none;
+    stroke: #8AAFFF; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+  }
+  #option-switcher:hover svg { stroke: #04D1FF; }
+
+  /* --- Option 1 video wrapper --- */
+  .o1-video-wrap {
+    width: 100%; max-width: 520px;
+    border-radius: 12px; overflow: hidden;
+    border: 1px solid rgba(52,109,201,0.15);
+    box-shadow: 0 0 40px rgba(4,209,255,0.06), 0 0 80px rgba(52,109,201,0.04);
+  }
+  .o1-video-wrap video {
+    display: block; width: 100%; height: auto;
+    border-radius: 12px;
+  }
+
+  /* --- Option 1 Screen 2 --- */
+  #option1-screen2 {
+    position: fixed; inset: 0; z-index: 16;
+    background: #08062B;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% 50%, rgba(52,109,201,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 80% 60%, rgba(4,209,255,0.05) 0%, transparent 60%);
+    display: flex; align-items: center;
+    font-family: 'Geist Mono', 'Courier New', monospace;
+    padding: 0 8vw;
+    transition: opacity 0.6s ease;
+  }
+  #option1-screen2 .o1-left { flex: 0 0 50%; max-width: 560px; display: flex; flex-direction: column; gap: 0; }
+  #option1-screen2 .o1-right { flex: 1; display: flex; align-items: center; justify-content: center; padding-left: 4vw; }
+  #option1-screen2 .o1-left h1 {
+    font-family: 'Geist Mono', 'Courier New', monospace;
+    font-size: 1.75rem; font-weight: 600;
+    color: #eef0f4; line-height: 1.45;
+    margin-bottom: 18px; letter-spacing: -0.01em;
+  }
+  #option1-screen2 .o1-left p {
+    font-family: 'Geist Mono', 'Courier New', monospace;
+    color: #6b7a99; font-size: 0.88rem;
+    line-height: 1.6; margin-bottom: 6px;
+  }
+  #o1-dots::after {
+    content: '.';
+    animation: dots 1.5s steps(1) infinite;
+  }
+
+  /* --- Carousel --- */
+  .o1-carousel {
+    width: 100%; max-width: 520px;
+    position: relative; overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid rgba(52,109,201,0.12);
+    background: rgba(8,6,43,0.6);
+    box-shadow: 0 0 50px rgba(4,209,255,0.04), 0 0 100px rgba(52,109,201,0.03);
+  }
+  .o1-carousel-track {
+    display: flex;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .o1-carousel-slide {
+    min-width: 100%; box-sizing: border-box;
+    padding: 40px 36px;
+    font-family: 'Geist Mono', 'Courier New', monospace;
+  }
+  .o1-carousel-slide .o1c-eyebrow {
+    font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: #04D1FF; margin-bottom: 14px;
+  }
+  .o1-carousel-slide .o1c-title {
+    font-size: 1.55rem; font-weight: 600;
+    color: #8AAFFF; line-height: 1.35;
+    margin-bottom: 20px; letter-spacing: -0.01em;
+  }
+  .o1-carousel-slide .o1c-body {
+    font-size: 0.82rem; color: #9aa8c4;
+    line-height: 1.7; margin-bottom: 28px;
+  }
+  .o1-carousel-slide .o1c-btn {
+    display: inline-block; padding: 10px 26px;
+    border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    text-decoration: none; cursor: pointer;
+    background: #04D1FF; color: #08062B;
+    border: none;
+    font-family: 'Geist Mono', 'Courier New', monospace;
+    transition: background 0.25s;
+  }
+  .o1-carousel-slide .o1c-btn:hover { background: #32D9DF; }
+  .o1-carousel-dots {
+    display: flex; justify-content: center; gap: 8px;
+    padding: 16px 0 20px;
+  }
+  .o1-carousel-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(138,175,255,0.2);
+    border: none; cursor: pointer; padding: 0;
+    transition: background 0.3s, transform 0.3s;
+  }
+  .o1-carousel-dot.active {
+    background: #04D1FF;
+    transform: scale(1.25);
+  }
+
+  /* --- Option 1 buttons --- */
+  .o1-btn-row {
+    display: flex; gap: 14px; flex-wrap: wrap;
+  }
+  .o1-btn {
+    display: inline-block; padding: 10px 24px;
+    border-radius: 6px; font-size: 0.85rem;
+    font-weight: 500; letter-spacing: 0.02em;
+    cursor: pointer; text-decoration: none;
+    transition: background 0.25s, border-color 0.25s, color 0.25s;
+    border: 1px solid;
+    font-family: 'Geist Mono', 'Courier New', monospace;
+  }
+  .o1-btn-primary {
+    background: rgba(4,209,255,0.08);
+    border-color: rgba(4,209,255,0.25);
+    color: #04D1FF;
+  }
+  .o1-btn-primary:hover {
+    background: rgba(4,209,255,0.18);
+    border-color: rgba(4,209,255,0.5);
+  }
+  .o1-btn-secondary {
+    background: rgba(4,209,255,0.08);
+    border-color: rgba(4,209,255,0.25);
+    color: #04D1FF;
+  }
+  .o1-btn-secondary:hover {
+    background: rgba(4,209,255,0.18);
+    border-color: rgba(4,209,255,0.5);
+  }
+  .o1-logo { display: block; width: 208px; height: auto; margin-bottom: 32px; }
+  .overlay-frame .o1-logo { margin-left: auto; margin-right: auto; }
+
+  /* --- Smart animate transitions --- */
+  .o1-left > * {
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .o1-left > .dissolve-out {
+    opacity: 0 !important;
+    transform: translateY(-8px);
+  }
+  .o1-left > .dissolve-in {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  .o1-left > .dissolve-in.reveal {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .o1-right > * {
+    transition: opacity 0.6s ease;
+  }
+  .o1-right > .fade-out { opacity: 0 !important; }
+  .o1-right > .fade-in  { opacity: 0; }
+  .o1-right > .fade-in.reveal { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- Option 1: ThoughtSpot-style page -->
+<div id="option1">
+  <div class="o1-left">
+    <img src="https://www.thoughtspot.com/images/TSNewWhite.svg" alt="ThoughtSpot" class="o1-logo">
+    <h1>The platform temporarily moved to standby to optimize energy usage</h1>
+    <div class="o1-captcha">
+      <div class="o1-captcha-box" id="o1-captcha-box">
+        <div class="o1-captcha-check">
+          <div class="o1-captcha-checkbox" id="o1-captcha-checkbox"></div>
+          <div class="o1-captcha-spinner" id="o1-captcha-spinner"></div>
+          <div class="o1-captcha-tick" id="o1-captcha-tick">&#10003;</div>
+        </div>
+        <span class="o1-captcha-label">I'm not a robot</span>
+      </div>
+      <div class="o1-captcha-brand">
+        <svg viewBox="0 0 64 64" width="28" height="28"><path fill="#3a5080" d="M32 4C16.536 4 4 16.536 4 32s12.536 28 28 28 28-12.536 28-28S47.464 4 32 4zm0 8a8 8 0 110 16 8 8 0 010-16zm14 30H18v-2c0-6 12-9.33 14-9.33S46 34 46 40v2z"/></svg>
+        <div class="o1-captcha-brand-text">reCAPTCHA<br><span>Privacy - Terms</span></div>
+      </div>
+    </div>
+    <p>Start the cluster using captcha, or contact your local ThoughtSpot administrator.</p>
+  </div>
+  <div class="o1-right">
+    <div class="o1-video-wrap">
+      <video id="o1-video" autoplay muted loop playsinline>
+        <source src="https://media.thoughtspot.com/35707/1766012424-spotlight-autonomous-web-agents-v02-1225-compressed.mp4" type="video/mp4">
+      </video>
+    </div>
+  </div>
+</div>
+
+<!-- Option 1 Screen 2 -->
+<div id="option1-screen2" style="display:none; opacity:0;">
+  <div class="o1-left">
+    <img src="https://www.thoughtspot.com/images/TSNewWhite.svg" alt="ThoughtSpot" class="o1-logo">
+    <h1>The system &amp; services are waking up<span id="o1-dots"></span></h1>
+    <p>Meanwhile you can learn <a href="#" style="color:#04D1FF; text-decoration:underline; text-underline-offset:3px;">What's new with ThoughtSpot</a></p>
+    <p>OR</p>
+    <p>Browse through <a href="#" style="color:#04D1FF; text-decoration:underline; text-underline-offset:3px;">ThoughtSpot community</a></p>
+  </div>
+  <div class="o1-right">
+    <div class="o1-carousel" id="o1-carousel">
+      <div class="o1-carousel-track" id="o1-carousel-track">
+        <div class="o1-carousel-slide">
+          <div class="o1c-eyebrow">Introducing SpotterViz</div>
+          <div class="o1c-title">Data to Dashboards, Instantly.</div>
+          <div class="o1c-body">SpotterViz is your dashboarding agent that turns data into a story in minutes. SpotterViz plans the story, generates the right answers, and builds a complete Liveboard automatically, from structure to layout to styling, with precision and consistency that no manual workflow can match.</div>
+          <a class="o1c-btn" href="#">Learn More</a>
+        </div>
+        <div class="o1-carousel-slide">
+          <div class="o1c-eyebrow">Introducing SpotterCode</div>
+          <div class="o1c-title">Less Coding. More Shipping.</div>
+          <div class="o1c-body">SpotterCode brings AI-assisted coding directly into your IDE, letting you start with a simple prompt that describes the experience you want. It understands your intent and generates the right code patterns, components, and embed logic&mdash;so you can move quickly from idea to intelligent feature.</div>
+          <a class="o1c-btn" href="#">Learn More</a>
+        </div>
+        <div class="o1-carousel-slide">
+          <div class="o1c-eyebrow">Introducing Spotter 3</div>
+          <div class="o1c-title">Autonomous Agent for Analytics</div>
+          <div class="o1c-body">Meet Spotter 3, the latest evolution of the AI agent for analytics. Insights from every data source&mdash;not just structured ones&mdash;give you the context you need to act. Actionable, end-to-end reporting and analysis means confident decision-making for everyone.</div>
+          <a class="o1c-btn" href="#">Meet Spotter</a>
+        </div>
+      </div>
+      <div class="o1-carousel-dots" id="o1-carousel-dots">
+        <button class="o1-carousel-dot active" data-idx="0"></button>
+        <button class="o1-carousel-dot" data-idx="1"></button>
+        <button class="o1-carousel-dot" data-idx="2"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<canvas id="matrix" style="display:none;"></canvas>
+
+<div id="screen1" class="overlay-frame" style="display:none;">
+  <img src="https://www.thoughtspot.com/images/TSNewWhite.svg" alt="ThoughtSpot" class="o1-logo">
+  <h1>The platform temporarily moved to standby to optimize energy usage</h1>
+  <div id="captcha">
+    <div id="captcha-box">
+      <div id="captcha-check">
+        <div id="captcha-checkbox"></div>
+        <div id="captcha-spinner"></div>
+        <div id="captcha-tick">&#10003;</div>
+      </div>
+      <span id="captcha-label">I'm not a robot</span>
+    </div>
+    <div id="captcha-brand">
+      <svg viewBox="0 0 64 64" width="28" height="28"><path fill="#4a4a4a" d="M32 4C16.536 4 4 16.536 4 32s12.536 28 28 28 28-12.536 28-28S47.464 4 32 4zm0 8a8 8 0 110 16 8 8 0 010-16zm14 30H18v-2c0-6 12-9.33 14-9.33S46 34 46 40v2z"/></svg>
+      <div id="captcha-brand-text">reCAPTCHA<br><span>Privacy - Terms</span></div>
+    </div>
+  </div>
+  <p>Start the cluster using captcha</p>
+</div>
+
+<div id="screen2" class="overlay-frame" style="display:none; opacity:0;">
+  <img src="https://www.thoughtspot.com/images/TSNewWhite.svg" alt="ThoughtSpot" class="o1-logo">
+  <h1>The system &amp; services are waking up...</h1>
+  <div class="btn-row">
+    <a class="btn btn-primary" href="#">What's new with ThoughtSpot</a>
+    <a class="btn btn-secondary" href="#">ThoughtSpot community</a>
+  </div>
+</div>
+
+<!-- Option switcher -->
+<button id="option-switcher" aria-label="Switch option view">
+  <svg viewBox="0 0 24 24"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+</button>
+
+<span id="color-label" style="display:none;">BLUE</span>
+<button id="color-toggle" aria-label="Toggle color mode" style="display:none;"></button>
+
+<script>
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+
+let W, H, CX, CY;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  CX = W / 2;
+  CY = H / 2;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const CELL = 22;
+const HALF_CELL = CELL / 2 - 1;
+const FL = 600;
+const Z_FAR = 1200;
+const Z_NEAR = 1;
+const Z_SPEED = 0.6;
+const NUM_STREAMS = 120;
+const TARGET_FPS = 30;
+const FRAME_BUDGET = 1000 / TARGET_FPS;
+
+const CHART_TYPES = [
+  'bar', 'line', 'pie', 'donut', 'scatter',
+  'area', 'candlestick', 'radar', 'histogram', 'sparkline'
+];
+
+const MAX_DATA_LEN = 8;
+function randomData(n) {
+  const arr = new Array(n);
+  for (let i = 0; i < n; i++) arr[i] = Math.random();
+  return arr;
+}
+function fillRandomData(arr, n) {
+  for (let i = 0; i < n; i++) arr[i] = Math.random();
+}
+
+function drawBar(ctx, half, data, n) {
+  const barW = (half * 2) / n - 1;
+  for (let i = 0; i < n; i++) {
+    ctx.fillRect(-half + i * (barW + 1), half - data[i] * half * 1.8, barW, data[i] * half * 1.8);
+  }
+}
+
+function drawLine(ctx, half, data, n) {
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const x = -half + (i / (n - 1)) * half * 2;
+    const y = half - data[i] * half * 1.8;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
+
+function drawPie(ctx, half, data, n) {
+  let total = 0;
+  for (let i = 0; i < n; i++) total += data[i];
+  let angle = -Math.PI / 2;
+  const r = half * 0.82, baseA = ctx.globalAlpha;
+  for (let i = 0; i < n; i++) {
+    const slice = (data[i] / total) * Math.PI * 2;
+    ctx.globalAlpha = baseA * (0.4 + (i / n) * 0.6);
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    ctx.arc(0, 0, r, angle, angle + slice);
+    ctx.closePath(); ctx.fill(); angle += slice;
+  }
+  ctx.globalAlpha = baseA;
+}
+
+function drawDonut(ctx, half, data, n) {
+  let total = 0;
+  for (let i = 0; i < n; i++) total += data[i];
+  let angle = -Math.PI / 2;
+  const outer = half * 0.82, inner = half * 0.42, baseA = ctx.globalAlpha;
+  for (let i = 0; i < n; i++) {
+    const slice = (data[i] / total) * Math.PI * 2;
+    ctx.globalAlpha = baseA * (0.4 + (i / n) * 0.6);
+    ctx.beginPath();
+    ctx.arc(0, 0, outer, angle, angle + slice);
+    ctx.arc(0, 0, inner, angle + slice, angle, true);
+    ctx.closePath(); ctx.fill(); angle += slice;
+  }
+  ctx.globalAlpha = baseA;
+}
+
+function drawScatter(ctx, half, data, n) {
+  for (let i = 0; i < n; i++) {
+    ctx.beginPath();
+    ctx.arc(-half + data[i] * half * 2, -half + data[(i + 1) % n] * half * 2, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawArea(ctx, half, data, n) {
+  ctx.beginPath(); ctx.moveTo(-half, half);
+  for (let i = 0; i < n; i++) ctx.lineTo(-half + (i / (n - 1)) * half * 2, half - data[i] * half * 1.8);
+  ctx.lineTo(half, half); ctx.closePath(); ctx.fill(); ctx.stroke();
+}
+
+function drawCandlestick(ctx, half, data, n) {
+  const cn = Math.min(n, 5), w = (half * 2) / cn - 2;
+  for (let i = 0; i < cn; i++) {
+    const o = data[i], c = data[(i + 1) % n];
+    const x = -half + i * (w + 2) + w / 2;
+    ctx.beginPath();
+    ctx.moveTo(x, half - Math.max(o, c) * half * 1.6);
+    ctx.lineTo(x, half - Math.min(o, c) * half * 1.6 + half * 0.15);
+    ctx.stroke();
+    const top = half - Math.max(o, c) * half * 1.4;
+    const bot = half - Math.min(o, c) * half * 1.4;
+    ctx.fillRect(x - w / 2, top, w, Math.max(1, bot - top));
+  }
+}
+
+function drawRadar(ctx, half, data, n) {
+  const r = half * 0.78, baseA = ctx.globalAlpha;
+  ctx.globalAlpha = baseA * 0.4;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+    ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  ctx.stroke(); ctx.globalAlpha = baseA;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2, v = data[i] * r;
+    i === 0 ? ctx.moveTo(Math.cos(a) * v, Math.sin(a) * v) : ctx.lineTo(Math.cos(a) * v, Math.sin(a) * v);
+  }
+  ctx.closePath(); ctx.globalAlpha = baseA * 0.3; ctx.fill();
+  ctx.globalAlpha = baseA; ctx.stroke();
+}
+
+function drawHistogram(ctx, half, data, n) {
+  const barW = (half * 2) / n, baseA = ctx.globalAlpha;
+  for (let i = 0; i < n; i++) {
+    const h = data[i] * half * 1.8;
+    ctx.globalAlpha = baseA * (0.5 + data[i] * 0.5);
+    ctx.fillRect(-half + i * barW, half - h, barW - 0.5, h);
+  }
+  ctx.globalAlpha = baseA;
+}
+
+function drawSparkline(ctx, half, data, n) {
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const x = -half + (i / (n - 1)) * half * 2, y = half * 0.4 - data[i] * half * 1.2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(half, half * 0.4 - data[n - 1] * half * 1.2, 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+const DRAW_FN = [drawBar, drawLine, drawPie, drawDonut, drawScatter, drawArea, drawCandlestick, drawRadar, drawHistogram, drawSparkline];
+
+// --- Glyph (pooled, zero-alloc after init) ---
+class Glyph {
+  constructor() {
+    this.typeIdx = (Math.random() * CHART_TYPES.length) | 0;
+    this.dataLen = 4 + ((Math.random() * 4) | 0);
+    this.data = new Array(MAX_DATA_LEN);
+    fillRandomData(this.data, this.dataLen);
+  }
+  reset() {
+    this.typeIdx = (Math.random() * CHART_TYPES.length) | 0;
+    this.dataLen = 4 + ((Math.random() * 4) | 0);
+    fillRandomData(this.data, this.dataLen);
+  }
+  mutate() {
+    if (Math.random() < 0.06) {
+      this.reset();
+    } else if (Math.random() < 0.12) {
+      this.data[(Math.random() * this.dataLen) | 0] = Math.random();
+    }
+  }
+}
+
+let colorMode = false;
+
+function hslToRgb(h, s, l) {
+  h /= 360; s /= 100; l /= 100;
+  if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+  const hue2rgb = (p, q, t) => {
+    if (t < 0) t += 1; if (t > 1) t -= 1;
+    if (t < 1/6) return p + (q - p) * 6 * t;
+    if (t < 1/2) return q;
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+    return p;
+  };
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+  return [Math.round(hue2rgb(p, q, h + 1/3) * 255), Math.round(hue2rgb(p, q, h) * 255), Math.round(hue2rgb(p, q, h - 1/3) * 255)];
+}
+
+const rgbLut = Object.create(null);
+let rgbLutSize = 0;
+const RGB_LUT_MAX = 512;
+
+// Pre-computed color cache for rainbow mode (per-hue bucket)
+const HUE_BUCKETS = 36;
+const hueCache = new Array(HUE_BUCKETS);
+for (let i = 0; i < HUE_BUCKETS; i++) {
+  const h = (i / HUE_BUCKETS) * 360;
+  hueCache[i] = {
+    head: hslToRgb(h, 60, 90),
+    mid: hslToRgb(h, 80, 70),
+    tailColors: Array.from({ length: 20 }, (_, j) => {
+      const lightness = Math.max(10, 50 - (j / 20) * 35);
+      return hslToRgb(h, 80, lightness);
+    })
+  };
+}
+
+const MAX_TAIL = 24;
+
+class Stream {
+  constructor(scatter) {
+    this.spread = 1400;
+    this.wx = (Math.random() - 0.5) * this.spread;
+    this.wz = Math.random() * Z_FAR;
+    this.fallSpeed = 0.8 + Math.random() * 1.5;
+    this.tailLen = 6 + ((Math.random() * 18) | 0);
+    this.glyphs = new Array(MAX_TAIL);
+    for (let i = 0; i < MAX_TAIL; i++) this.glyphs[i] = new Glyph();
+    this.headWY = scatter ? (Math.random() - 0.5) * 1200 : -(300 + Math.random() * 400);
+    this.hueBucket = (Math.random() * HUE_BUCKETS) | 0;
+  }
+
+  recycle() {
+    this.wx = (Math.random() - 0.5) * this.spread;
+    this.wz = Z_FAR * (0.5 + Math.random() * 0.5);
+    this.fallSpeed = 0.8 + Math.random() * 1.5;
+    this.tailLen = 6 + ((Math.random() * 18) | 0);
+    for (let i = 0; i < this.tailLen; i++) this.glyphs[i].reset();
+    this.headWY = -(300 + Math.random() * 400);
+    this.hueBucket = (Math.random() * HUE_BUCKETS) | 0;
+  }
+
+  update(dt) {
+    this.wz -= Z_SPEED * dt;
+    this.headWY += this.fallSpeed * dt;
+    if (this.wz < Z_NEAR) { this.recycle(); return; }
+    if (this.headWY - this.tailLen * CELL > 600) {
+      this.headWY = -(300 + Math.random() * 400);
+      for (let i = 0; i < this.tailLen; i++) this.glyphs[i].reset();
+    }
+    for (let i = 0; i < this.tailLen; i++) this.glyphs[i].mutate();
+  }
+
+  draw(ctx) {
+    if (this.wz < Z_NEAR) return;
+
+    const scale = FL / this.wz;
+    const screenX = CX + this.wx * scale + panOffsetX * scale;
+    const cellScreen = CELL * scale;
+
+    if (screenX < -cellScreen || screenX > W + cellScreen) return;
+
+    const half = cellScreen / 2 - 1;
+    if (half < 2) return;
+
+    const zNorm = 1 - this.wz / Z_FAR;
+    const baseAlpha = 0.15 + zNorm * 0.85;
+    const hc = hueCache[this.hueBucket];
+
+    ctx.save();
+    ctx.translate(screenX, 0);
+
+    for (let i = 0; i < this.tailLen; i++) {
+      const screenY = CY + (this.headWY - i * CELL) * scale + panOffsetY * scale;
+      if (screenY < -cellScreen || screenY > H + cellScreen) continue;
+
+      const posInTail = i / this.tailLen;
+      let alpha, r, g, b;
+
+      if (colorMode) {
+        if (i === 0) {
+          r = hc.head[0]; g = hc.head[1]; b = hc.head[2]; alpha = baseAlpha;
+        } else if (i <= 2) {
+          const mix = 1 - i / 2;
+          r = hc.mid[0] + ((255 - hc.mid[0]) * mix * 0.7) | 0;
+          g = hc.mid[1] + ((255 - hc.mid[1]) * mix * 0.7) | 0;
+          b = hc.mid[2] + ((255 - hc.mid[2]) * mix * 0.7) | 0;
+          alpha = baseAlpha * (0.85 + 0.15 * mix);
+        } else {
+          const ti = Math.min(19, (posInTail * 20) | 0);
+          r = hc.tailColors[ti][0]; g = hc.tailColors[ti][1]; b = hc.tailColors[ti][2];
+          alpha = baseAlpha * Math.pow(1 - posInTail, 1.5);
+        }
+      } else {
+        if (i === 0) {
+          r = 200; g = 215; b = 255; alpha = baseAlpha;
+        } else if (i <= 2) {
+          const t = i / 2;
+          r = (200 * (1 - t)) | 0; g = (215 * (1 - t)) | 0; b = 255;
+          alpha = baseAlpha * (0.85 + 0.15 * (1 - t));
+        } else {
+          r = (20 - posInTail * 15) | 0; g = (80 - posInTail * 50) | 0; b = (200 - posInTail * 130) | 0;
+          alpha = baseAlpha * Math.pow(1 - posInTail, 1.5);
+        }
+      }
+
+      if (alpha < 0.01) continue;
+
+      const glyph = this.glyphs[i];
+      ctx.save();
+      ctx.translate(0, screenY);
+      ctx.scale(scale, scale);
+      ctx.globalAlpha = alpha;
+      const key = (r << 16) | (g << 8) | b;
+      let col = rgbLut[key];
+      if (!col) {
+        if (rgbLutSize >= RGB_LUT_MAX) { for (const k in rgbLut) { delete rgbLut[k]; } rgbLutSize = 0; }
+        col = rgbLut[key] = `rgb(${r},${g},${b})`;
+        rgbLutSize++;
+      }
+      ctx.fillStyle = col;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 1;
+
+      DRAW_FN[glyph.typeIdx](ctx, HALF_CELL, glyph.data, glyph.dataLen);
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+}
+
+let streams = [];
+function initStreams() {
+  streams = [];
+  for (let i = 0; i < NUM_STREAMS; i++) streams.push(new Stream(true));
+}
+initStreams();
+
+// --- Pan on edge hover ---
+let panOffsetX = 0;
+let panOffsetY = 0;
+let panTargetX = 0;
+let panTargetY = 0;
+const PAN_EDGE = 0.07;
+const PAN_MAX = 400;
+let mouseScreenX = -1;
+let mouseScreenY = -1;
+
+canvas.addEventListener('mousemove', (e) => { mouseScreenX = e.clientX; mouseScreenY = e.clientY; });
+canvas.addEventListener('mouseleave', () => { mouseScreenX = -1; mouseScreenY = -1; });
+
+function updatePan(dt) {
+  if (mouseScreenX < 0 || W === 0) {
+    panTargetX = 0;
+    panTargetY = 0;
+  } else {
+    const edgePxX = W * PAN_EDGE;
+    if (mouseScreenX < edgePxX) {
+      panTargetX = PAN_MAX * (1 - mouseScreenX / edgePxX);
+    } else if (mouseScreenX > W - edgePxX) {
+      panTargetX = -PAN_MAX * (1 - (W - mouseScreenX) / edgePxX);
+    } else {
+      panTargetX = 0;
+    }
+
+    const edgePxYTop = H * PAN_EDGE;
+    const edgePxYBot = H * 0.03;
+    if (mouseScreenY < edgePxYTop) {
+      panTargetY = PAN_MAX * (1 - mouseScreenY / edgePxYTop);
+    } else if (mouseScreenY > H - edgePxYBot) {
+      panTargetY = -PAN_MAX * (1 - (H - mouseScreenY) / edgePxYBot);
+    } else {
+      panTargetY = 0;
+    }
+  }
+  const lerp = Math.min(1, 0.04 * dt);
+  panOffsetX += (panTargetX - panOffsetX) * lerp;
+  panOffsetY += (panTargetY - panOffsetY) * lerp;
+}
+
+// --- State ---
+let frozen = true;
+let paused = false;
+let lastTime = 0;
+let animId = 0;
+let frameCount = 0;
+const SORT_INTERVAL = 4;
+const FRAME_WRAP = SORT_INTERVAL * 10000;
+let currentOption = 1;
+
+// Draw initial frozen frame
+function drawFrozen() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  streams.sort((a, b) => b.wz - a.wz);
+  for (let i = 0; i < NUM_STREAMS; i++) streams[i].draw(ctx);
+}
+
+// --- Visibility: pause when tab is hidden ---
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    paused = true;
+    cancelAnimationFrame(animId);
+  } else {
+    paused = false;
+    lastTime = 0;
+    if (!frozen) animId = requestAnimationFrame(animate);
+  }
+});
+
+// --- Main loop ---
+function animate(now) {
+  if (paused || frozen) return;
+  animId = requestAnimationFrame(animate);
+
+  if (!lastTime) { lastTime = now; return; }
+  const elapsed = now - lastTime;
+  lastTime = now;
+
+  const dt = Math.min(elapsed / FRAME_BUDGET, 3);
+
+  updatePan(dt);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(0, 0, W, H);
+
+  for (let i = 0; i < NUM_STREAMS; i++) streams[i].update(dt);
+
+  frameCount = (frameCount + 1) % FRAME_WRAP;
+  if (frameCount % SORT_INTERVAL === 0) {
+    streams.sort((a, b) => b.wz - a.wz);
+  }
+
+  for (let i = 0; i < NUM_STREAMS; i++) streams[i].draw(ctx);
+}
+
+// --- DOM refs ---
+const option1El = document.getElementById('option1');
+const screen1 = document.getElementById('screen1');
+const screen2 = document.getElementById('screen2');
+const captchaBox = document.getElementById('captcha-box');
+const captchaCheckbox = document.getElementById('captcha-checkbox');
+const captchaSpinner = document.getElementById('captcha-spinner');
+const captchaTick = document.getElementById('captcha-tick');
+const colorLabel = document.getElementById('color-label');
+const colorToggle = document.getElementById('color-toggle');
+const optionSwitcher = document.getElementById('option-switcher');
+const o1CaptchaBox = document.getElementById('o1-captcha-box');
+const o1CaptchaCheckbox = document.getElementById('o1-captcha-checkbox');
+const o1CaptchaSpinner = document.getElementById('o1-captcha-spinner');
+const o1CaptchaTick = document.getElementById('o1-captcha-tick');
+const option1Screen2 = document.getElementById('option1-screen2');
+
+// --- Transition to Screen 2 (shared by both options) ---
+function transitionToScreen2() {
+  const fadeSource = currentOption === 1 ? option1El : screen1;
+  fadeSource.style.opacity = '0';
+
+  setTimeout(() => {
+    fadeSource.style.display = 'none';
+    option1El.style.display = 'none';
+    screen1.style.display = 'none';
+
+    canvas.style.display = '';
+    screen2.style.display = '';
+    requestAnimationFrame(() => { screen2.style.opacity = '1'; });
+
+    colorLabel.style.display = '';
+    colorToggle.style.display = '';
+
+    frozen = false;
+    lastTime = 0;
+    drawFrozen();
+    animId = requestAnimationFrame(animate);
+  }, 600);
+}
+
+// --- Option 2 captcha flow ---
+captchaBox.addEventListener('click', () => {
+  if (!frozen) return;
+  captchaCheckbox.style.display = 'none';
+  captchaSpinner.style.display = 'block';
+
+  setTimeout(() => {
+    captchaSpinner.style.display = 'none';
+    captchaTick.style.display = 'block';
+    setTimeout(transitionToScreen2, 500);
+  }, 1500);
+});
+
+// --- Option 1 captcha flow (smart animate) ---
+o1CaptchaBox.addEventListener('click', () => {
+  if (!frozen) return;
+  o1CaptchaCheckbox.style.display = 'none';
+  o1CaptchaSpinner.style.display = 'block';
+
+  setTimeout(() => {
+    o1CaptchaSpinner.style.display = 'none';
+    o1CaptchaTick.style.display = 'block';
+    setTimeout(() => {
+      const s1Left = option1El.querySelector('.o1-left');
+      const s1Right = option1El.querySelector('.o1-right');
+      const s1LeftChildren = Array.from(s1Left.children);
+      const s1RightChildren = Array.from(s1Right.children);
+
+      // Step 1: dissolve out Screen 1 text (skip logo), fade out video
+      s1LeftChildren.forEach((el, i) => {
+        if (i === 0) return; // keep logo
+        el.style.transitionDelay = (i * 0.07) + 's';
+        el.classList.add('dissolve-out');
+      });
+      s1RightChildren.forEach(el => el.classList.add('fade-out'));
+
+      // Step 2: after dissolve completes, show Screen 2 on top
+      setTimeout(() => {
+        option1Screen2.style.display = 'flex';
+        option1Screen2.style.opacity = '1';
+
+        const s2Left = option1Screen2.querySelector('.o1-left');
+        const s2Right = option1Screen2.querySelector('.o1-right');
+        const s2LeftChildren = Array.from(s2Left.children);
+        const s2RightChildren = Array.from(s2Right.children);
+
+        // Prepare Screen 2 elements hidden
+        s2LeftChildren.forEach((el, i) => {
+          if (i === 0) { el.style.opacity = '1'; return; } // logo already visible
+          el.classList.add('dissolve-in');
+        });
+        s2RightChildren.forEach(el => el.classList.add('fade-in'));
+
+        // Step 3: reveal Screen 2 elements with stagger
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            s2LeftChildren.forEach((el, i) => {
+              if (i === 0) return;
+              el.style.transitionDelay = (i * 0.1) + 's';
+              el.classList.add('reveal');
+            });
+            s2RightChildren.forEach(el => {
+              el.style.transitionDelay = '0.2s';
+              el.classList.add('reveal');
+            });
+          });
+        });
+
+        // Cleanup
+        setTimeout(() => {
+          option1El.style.display = 'none';
+          s1LeftChildren.forEach(el => { el.classList.remove('dissolve-out'); el.style.transitionDelay = ''; });
+          s1RightChildren.forEach(el => el.classList.remove('fade-out'));
+          s2LeftChildren.forEach(el => { el.classList.remove('dissolve-in', 'reveal'); el.style.transitionDelay = ''; el.style.opacity = ''; });
+          s2RightChildren.forEach(el => { el.classList.remove('fade-in', 'reveal'); el.style.transitionDelay = ''; });
+        }, 900);
+
+        startCarousel();
+      }, 550);
+    }, 500);
+  }, 1500);
+});
+
+// --- Option switcher ---
+function hideAllScreens() {
+  option1El.style.display = 'none';
+  option1Screen2.style.display = 'none';
+  option1Screen2.style.opacity = '0';
+  canvas.style.display = 'none';
+  screen1.style.display = 'none';
+  screen2.style.display = 'none';
+  screen2.style.opacity = '0';
+  colorLabel.style.display = 'none';
+  colorToggle.style.display = 'none';
+  if (carouselTimer) { clearInterval(carouselTimer); carouselTimer = null; }
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+}
+
+optionSwitcher.addEventListener('click', () => {
+  if (currentOption === 1) {
+    currentOption = 2;
+    hideAllScreens();
+    canvas.style.display = '';
+    screen1.style.display = '';
+    screen1.style.opacity = '1';
+    colorLabel.style.display = '';
+    colorToggle.style.display = '';
+    frozen = true;
+    drawFrozen();
+    // Reset option 1 captcha state
+    o1CaptchaCheckbox.style.display = '';
+    o1CaptchaSpinner.style.display = 'none';
+    o1CaptchaTick.style.display = 'none';
+  } else {
+    currentOption = 1;
+    hideAllScreens();
+    option1El.style.display = '';
+    option1El.style.opacity = '1';
+    // Reset option 2 captcha state
+    captchaCheckbox.style.display = '';
+    captchaSpinner.style.display = 'none';
+    captchaTick.style.display = 'none';
+  }
+});
+
+// --- Color toggle ---
+colorToggle.addEventListener('click', () => {
+  colorMode = !colorMode;
+  document.body.classList.toggle('rainbow', colorMode);
+  colorLabel.textContent = colorMode ? 'RAINBOW' : 'BLUE';
+  if (frozen) drawFrozen();
+});
+
+// --- Carousel ---
+const carouselTrack = document.getElementById('o1-carousel-track');
+const carouselDots = document.querySelectorAll('.o1-carousel-dot');
+let carouselIdx = 0;
+let carouselTimer = null;
+
+function goToSlide(idx) {
+  carouselIdx = idx;
+  carouselTrack.style.transform = `translateX(-${idx * 100}%)`;
+  carouselDots.forEach((d, i) => d.classList.toggle('active', i === idx));
+}
+
+function nextSlide() {
+  goToSlide((carouselIdx + 1) % 3);
+}
+
+function startCarousel() {
+  if (carouselTimer) clearInterval(carouselTimer);
+  goToSlide(0);
+  carouselTimer = setInterval(nextSlide, 5000);
+}
+
+carouselDots.forEach(dot => {
+  dot.addEventListener('click', () => {
+    goToSlide(Number(dot.dataset.idx));
+    if (carouselTimer) clearInterval(carouselTimer);
+    carouselTimer = setInterval(nextSlide, 5000);
+  });
+});
+
+</script>
+</body>
+</html>
