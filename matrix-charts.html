@@ -237,10 +237,9 @@
 
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes dots {
-    0%   { content: ''; }
-    25%  { content: '.'; }
-    50%  { content: '..'; }
-    75%  { content: '...'; }
+    0%   { content: '...'; }
+    33%  { content: '.'; }
+    66%  { content: '..'; }
   }
   #o1-dots::after, #o2-dots::after {
     content: '';
@@ -260,7 +259,7 @@
 <div id="option1">
   <div class="o1-glass">
     <img src="https://www.thoughtspot.com/images/TSNewWhite.svg" alt="ThoughtSpot" class="o1-logo">
-    <h1>Instance went on standby after inactivity to optimize energy.</h1>
+    <h1>Your instance entered standby mode after inactivity to save energy</h1>
     <div class="o1-captcha">
       <div class="o1-captcha-box" id="o1-captcha-box">
         <div class="o1-captcha-check">
@@ -283,9 +282,9 @@
 <div id="option1-screen2" style="display:none; opacity:0;">
   <div class="o1-glass">
     <img src="https://www.thoughtspot.com/images/TSNewWhite.svg" alt="ThoughtSpot" class="o1-logo">
-    <h1>System &amp; services are waking up<span id="o1-dots"></span></h1>
+    <h1>System &amp; services should be back up momentarily<span id="o1-dots"></span></h1>
     <div class="o1-btn-row">
-      <a class="o1-btn" href="#">What's new with ThoughtSpot</a>
+      <a class="o1-btn" href="https://docs.thoughtspot.com/cloud/26.3.0.cl/notes" target="_blank">What's new with ThoughtSpot</a>
       <a class="o1-btn" href="#">ThoughtSpot community</a>
     </div>
   </div>
@@ -298,7 +297,7 @@
     <h1>Scheduled maintenance in progress<span id="o2-dots"></span></h1>
     <p>Access will be restored shortly</p>
     <div class="o1-btn-row">
-      <a class="o1-btn" href="#">What's new with ThoughtSpot</a>
+      <a class="o1-btn" href="https://docs.thoughtspot.com/cloud/26.3.0.cl/notes" target="_blank">What's new with ThoughtSpot</a>
       <a class="o1-btn" href="#">ThoughtSpot community</a>
     </div>
     <div class="o2-divider"></div>
